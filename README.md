@@ -1,6 +1,7 @@
 # Инструкция по настройке окружения для компиляции шаблона диссертации в LaTeX
 
 Сссылка на шаблон - [https://github.com/AndreyAkinshin/Russian-Phd-LaTeX-Dissertation-Template](https://github.com/AndreyAkinshin/Russian-Phd-LaTeX-Dissertation-Template)
+Прямая ссылка на скачивание - [https://github.com/AndreyAkinshin/Russian-Phd-LaTeX-Dissertation-Template/archive/refs/heads/master.zip](https://github.com/AndreyAkinshin/Russian-Phd-LaTeX-Dissertation-Template/archive/refs/heads/master.zip)
 
 ### Установка и настройка компилятора
 
