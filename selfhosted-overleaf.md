@@ -1,9 +1,12 @@
 ## Сборка через self-hosted overleaf
 
+Для компиляции можно использовать локальный инстанс Overleaf сервера. 
+Из плюсов - возможность организации совместной работы нескольких человек.
+Из минусов - танцы с бубном, чтобы правильно сбилдить контейнер.
+
 Репозиторий с контейнером overleaf - https://github.com/overleaf/overleaf
 Инструкция сделана на основе [гиста](https://shihabkhan1.github.io/overleaf/stepbystep.html), 
 тут будет краткое его содержание с дополнением:
-
 
 1) Развертываем `compose` как обычно. Нужно удостовериться, что `*.js` файл инициализации монги корректно передается в `compose`. Также лучше перепроверить, что `volumes` ссылаются на текущую директорию, а не на `~`.
 2) По умолчанию `sharelatex` image содержит голый латех, поэтому в него нужно установить пакеты:
@@ -21,16 +24,6 @@ tlmgr install scheme-full
 # tlmgr update --self
 # tlmgr update --all
 # tlmgr install scheme-full
-
-# выходим из контейнера и коммитим изменения
-docker commit sharelatex sharelatex/sharelatex:<commit-message>
-
-# заходим в docker-compose и проставляем тэг <commit-message> в образ
-# ...
-# services:
-#    sharelatex:
-#        image: sharelatex/sharelatex:<commit-message>
-# ...
 ```
    
 3) дополнительно нужно установить шрифты CMU + Times New Roman
@@ -44,6 +37,7 @@ ls -l /usr/share/fonts/opentype/texlive/cm-unicode
 
 # install MS fonts
 apt-get update; apt-get install -y ttf-mscorefonts-installer fontconfig
+apt-get clean; rm -rf /var/lib/apt/lists/*
 
 # refresh font cache
 fc-cache -fv
@@ -63,7 +57,20 @@ ln -s /usr/local/texlive/2024/bin/x86_64-linux/biber /usr/local/bin/biber
 # проверка что все ок
 biber --version
 ```
-5) для использования через reverse proxy, необходимо настроить работу через веб-сокеты. Пример рабочей конфигурации:
+5) все изменения в контейнере необходимо закоммитить в image, чтобы корректно работало после пересоздания сервиса
+```bash
+# выходим из контейнера и коммитим изменения
+docker commit sharelatex sharelatex/sharelatex:<commit-message>
+
+# заходим в docker-compose и проставляем тэг <commit-message> в образ
+# ...
+# services:
+#    sharelatex:
+#        image: sharelatex/sharelatex:<commit-message>
+# ...
+```
+
+6) для использования через reverse proxy, необходимо настроить работу через веб-сокеты. Пример рабочей конфигурации:
 ```conf
 map $http_upgrade $connection_upgrade {
     default upgrade;
@@ -96,6 +103,7 @@ server {
     }
 }
 ```
+7) для создания учетки администратора перейти на адрес http://localhost:<port>/launchpad
 
 
 Полное содержимое `docker-compose.yaml` (без `nginx`):
