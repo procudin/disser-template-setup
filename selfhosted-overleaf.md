@@ -32,6 +32,7 @@ tlmgr install scheme-full
 find /usr/local/texlive/ -name "cmuntt.otf"
 
 # add & verify symlink for CMU
+mkdir -p /usr/share/fonts/opentype/texlive
 ln -s /usr/local/texlive/2024/texmf-dist/fonts/opentype/public/cm-unicode /usr/share/fonts/opentype/texlive/
 ls -l /usr/share/fonts/opentype/texlive/cm-unicode
 
