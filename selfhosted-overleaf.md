@@ -1,77 +1,19 @@
-## Сборка через self-hosted overleaf
+# Сборка через self-hosted overleaf
 
-Для компиляции можно использовать локальный инстанс Overleaf сервера. 
+Для компиляции можно использовать локальный инстанс Overleaf сервера.
 Из плюсов - возможность организации совместной работы нескольких человек.
 Из минусов - танцы с бубном, чтобы правильно сбилдить контейнер.
 
-Репозиторий с контейнером overleaf - https://github.com/overleaf/overleaf
-Инструкция сделана на основе [гиста](https://shihabkhan1.github.io/overleaf/stepbystep.html), 
-тут будет краткое его содержание с дополнением:
+Репозиторий с контейнером overleaf - [https://github.com/overleaf/overleaf](https://github.com/overleaf/overleaf)
+Инструкция сделана на основе [гиста](https://shihabkhan1.github.io/overleaf/stepbystep.html).
+Тут будет краткое его содержание с дополнением.
 
-1) Развертываем `compose` как обычно. Нужно удостовериться, что `*.js` файл инициализации монги корректно передается в `compose`. Также лучше перепроверить, что `volumes` ссылаются на текущую директорию, а не на `~`.
-2) По умолчанию `sharelatex` image содержит голый латех, поэтому в него нужно установить пакеты:
-   
-```bash
-# заходим в консоль sharelatex
-docker exec -it sharelatex bash
+## Инструкция по развертыванию
 
-# устанавливаем все латех пакеты
-tlmgr install scheme-full
-# тут может выскочить ошибка, что tlmgr: Local TeX Live (2024) is older than remote repository (2025) для фикса прогнать строчки ниже:
-# wget https://mirror.ctan.org/systems/texlive/tlnet/update-tlmgr-latest.sh
-# sh update-tlmgr-latest.sh -- --update
-# tlmgr option repository https://mirror.ctan.org/systems/texlive/tlnet
-# tlmgr update --self
-# tlmgr update --all
-# tlmgr install scheme-full
-```
-   
-3) дополнительно нужно установить шрифты CMU + Times New Roman
-```bash
-# find CMU font paths
-find /usr/local/texlive/ -name "cmuntt.otf"
+1. развертываем `compose` как обычно. Нужно удостовериться, что `*.js` файл инициализации монги корректно передается в `compose`. Также лучше перепроверить, что `volumes` ссылаются на текущую директорию, а не на `~`.
+2. по умолчанию `sharelatex` image содержит голый латех, без пакетов и Times New Roman. Вариант 2: доставить пакеты в контейнер вручную, или воспользоваться готовым [image](https://hub.docker.com/r/prokudintema/sharelatex).
+3. для использования через reverse proxy, необходимо настроить работу через веб-сокеты. Пример рабочей конфигурации:
 
-# add & verify symlink for CMU
-mkdir -p /usr/share/fonts/opentype/texlive
-ln -s /usr/local/texlive/2024/texmf-dist/fonts/opentype/public/cm-unicode /usr/share/fonts/opentype/texlive/
-ls -l /usr/share/fonts/opentype/texlive/cm-unicode
-
-# install MS fonts
-apt-get update; apt-get install -y ttf-mscorefonts-installer fontconfig
-apt-get clean; rm -rf /var/lib/apt/lists/*
-
-# refresh font cache
-fc-cache -fv
-
-# ensure fonts exist
-fc-list | grep "CMU Typewriter"
-fc-list | grep "Times"
-```
-4) дополнительно необходимо установить biber (он уже уходит в состав `tlmgr install scheme-full`, нужно просто прописать его в PATH)
-```bash
-# заходим в контейнер
-docker exec -it sharelatex bash
-
-# добавляем symlink
-ln -s /usr/local/texlive/2024/bin/x86_64-linux/biber /usr/local/bin/biber
-
-# проверка что все ок
-biber --version
-```
-5) все изменения в контейнере необходимо закоммитить в image, чтобы корректно работало после пересоздания сервиса
-```bash
-# выходим из контейнера и коммитим изменения
-docker commit sharelatex sharelatex/sharelatex:<commit-message>
-
-# заходим в docker-compose и проставляем тэг <commit-message> в образ
-# ...
-# services:
-#    sharelatex:
-#        image: sharelatex/sharelatex:<commit-message>
-# ...
-```
-
-6) для использования через reverse proxy, необходимо настроить работу через веб-сокеты. Пример рабочей конфигурации:
 ```conf
 map $http_upgrade $connection_upgrade {
     default upgrade;
@@ -104,28 +46,106 @@ server {
     }
 }
 ```
-7) для создания учетки администратора перейти на адрес http://localhost:<port>/launchpad
+
+4. для создания учётки администратора перейти на адрес `http://localhost:<port>/launchpad`
+
+## Установка пакетов в образ sharelatex
+
+1. запускаем `compose`
+
+2. устанавливаем пакеты
+
+```bash
+# заходим в консоль sharelatex
+docker exec -it sharelatex bash
+
+# устанавливаем все латех пакеты
+tlmgr install scheme-full
+# тут может выскочить ошибка, что tlmgr: Local TeX Live (2024) is older than remote repository (2025) для фикса прогнать строчки ниже:
+# wget https://mirror.ctan.org/systems/texlive/tlnet/update-tlmgr-latest.sh
+# sh update-tlmgr-latest.sh -- --update
+# tlmgr option repository https://mirror.ctan.org/systems/texlive/tlnet
+# tlmgr update --self
+# tlmgr update --all
+# tlmgr install scheme-full
+```
+
+3. дополнительно нужно установить шрифты CMU + Times New Roman
+
+```bash
+# find CMU font paths
+find /usr/local/texlive/ -name "cmuntt.otf"
+
+# add & verify symlink for CMU
+mkdir -p /usr/share/fonts/opentype/texlive
+ln -s /usr/local/texlive/2024/texmf-dist/fonts/opentype/public/cm-unicode /usr/share/fonts/opentype/texlive/
+ls -l /usr/share/fonts/opentype/texlive/cm-unicode
+
+# install MS fonts
+apt-get update; apt-get install -y ttf-mscorefonts-installer fontconfig
+apt-get clean; rm -rf /var/lib/apt/lists/*
+
+# refresh font cache
+fc-cache -fv
+
+# ensure fonts exist
+fc-list | grep "CMU Typewriter"
+fc-list | grep "Times"
+```
+
+4. дополнительно необходимо установить biber (он уже уходит в состав `tlmgr install scheme-full`, нужно просто прописать его в PATH)
+
+```bash
+# заходим в контейнер
+docker exec -it sharelatex bash
+
+# добавляем symlink
+ln -s /usr/local/texlive/2024/bin/x86_64-linux/biber /usr/local/bin/biber
+
+# проверка что все ок
+biber --version
+```
+
+5. все изменения в контейнере необходимо закоммитить в image, чтобы корректно работало после пересоздания сервиса
+
+```bash
+# выходим из контейнера и коммитим изменения
+docker commit sharelatex sharelatex/sharelatex:<commit-message>
+
+# заходим в docker-compose и проставляем тэг <commit-message> в образ
+# ...
+# services:
+#    sharelatex:
+#        image: sharelatex/sharelatex:<commit-message>
+# ...
+
+# можно запушить готовый собранный образ в свой репоизиторий
+docker login --username prokudintema
+docker tag sharelatex/sharelatex:<commit-message> prokudintema/sharelatex:latest prokudintema/sharelatex:<YYYY-MM-DD>
+docker push prokudintema/sharelatex:latest prokudintema/sharelatex:<YYYY-MM-DD>
+```
 
 ## Про бэкапы
 
-В офф. документации довольно хорошо [описан](https://github.com/overleaf/overleaf/wiki/Data-and-Backups) процесс бэкапов.
+В официальной документации довольно хорошо [описан](https://github.com/overleaf/overleaf/wiki/Data-and-Backups) процесс бэкапов.
 Там советуют бэкапить вообще все: монгу, редис и файлы с диска. Лично я для себя выбрал комбинацию бэкапов монги + фс, т.к. это минимальный набор, который гарантирует целостность данных после восстановления (пусть и возможно не самых свежих, т.к. в редисе хранится кэш, который периодически сбрасывается в монгу). Но для прям суперсерьезного сервиса с гарантиями нужно все же бэкапить и редиску.
 
-Горячих бэкапов нет, поэтому нужно останавливать сервис перед началом процесса бэкапа. Это вызвано тем, что возможен рассинхрон меджу монгой и фс, если вдруг пользователь в процессе полезет что-то менять. Думаю, что в теории можно ограничиться переводом баз и фс в режим readonly, перед стартом бэкапов, и этого должно хватить. Но если первоочередной задачей бэкапов является сохранность содержимого проектов, а полноценная работоспособность сайта после отката не столь важна, то я не вижу никаких причин не использовать горячие бэкапы, даже с риском нарушения целостности. Лично я вижу, что оптимальным является комбинация частых горячих бэкапов (частые, но не гарантирующие 100% целостность), с холодными (редкие, но с гарантией целостности). В общем, тут все зависит от того, какие обязательства сайт на себя берет.
+Горячих бэкапов нет, поэтому нужно останавливать сервис перед началом процесса бэкапа. Это вызвано тем, что возможен рассинхрон между монгой и фс, если вдруг пользователь в процессе полезет что-то менять. Думаю, что в теории можно ограничиться переводом баз и фс в режим readonly, перед стартом бэкапов, и этого должно хватить. Но если первоочередной задачей бэкапов является сохранность содержимого проектов, а полноценная работоспособность сайта после отката не столь важна, то я не вижу никаких причин не использовать горячие бэкапы, даже с риском нарушения целостности. Лично я вижу, что оптимальным является комбинация частых горячих бэкапов (частые, но не гарантирующие 100% целостность), с холодными (редкие, но с гарантией целостности). В общем, тут все зависит от того, какие обязательства сайт на себя берет.
 
-Откат из бэкапа довольно простой - перезатираем монгу ее бэкапом, перезатираем файлы фс соответвующим бэкапом фс.
-После восстановления фс, не забыть проставить ```chown -R www-data:www-data <path_to_sharelatex_folder>``` на восстановленную папку, иначе будут вылезать на сайте всякие прокольные ошибки странного характера.
+Откат из бэкапа довольно простой - перезатираем монгу её бэкапом, перезатираем файлы фс соответствующим бэкапом фс.
+После восстановления фс, не забыть проставить `chown -R www-data:www-data <path_to_sharelatex_folder>` на восстановленную папку, иначе будут вылезать на сайте всякие прикольные ошибки странного характера.
 
 ## Пример docker-compose.yaml
 
 Полное содержимое `docker-compose.yaml` (без `nginx`):
+
 ```yaml
 services:
     sharelatex:
         restart: always
         # Server Pro users:
         # image: quay.io/sharelatex/sharelatex-pro
-        image: sharelatex/sharelatex:prepared
+        image: prokudintema/sharelatex:latest
         container_name: sharelatex
         depends_on:
             mongo:
