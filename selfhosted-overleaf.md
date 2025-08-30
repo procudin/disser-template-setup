@@ -26,11 +26,40 @@ server {
     http2 on;
 
     server_name www.overleaf.compprehension.ru overleaf.compprehension.ru;
+
     ssl_certificate /etc/letsencrypt/live/compprehension.ru/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/compprehension.ru/privkey.pem;
     keepalive_timeout 75;
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 10m;
+
+    # config to enable HSTS(HTTP Strict Transport Security) https://developer.mozilla.org/en-US/docs/Security/HTTP_Strict_Transport_Security
+    # to avoid ssl stripping https://en.wikipedia.org/wiki/SSL_stripping#SSL_stripping	
+    add_header Strict-Transport-Security "max-age=31536000; includeSubdomains;";
+
+    server_tokens off;
+
+    add_header X-Frame-Options SAMEORIGIN;
+    add_header X-Content-Type-Options nosniff;
+    
+    # gzip config
+    gzip on;
+    gzip_disable "msie6";
+    gzip_comp_level 4;
+    gzip_min_length 1100;
+    gzip_buffers 16 8k;
+    gzip_proxied any;
+    gzip_types
+        text/plain
+        text/css
+        text/js
+        text/xml
+        text/javascript
+        application/javascript
+        application/json
+        application/xml
+        application/rss+xml
+        image/svg+xml;
         
     client_max_body_size 100M;
         
@@ -43,6 +72,14 @@ server {
         proxy_max_temp_file_size 0;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
+        
+        # reverse proxy
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; # Will add the user's ip to the request, some apps need this
+        proxy_set_header X-Forwarded-Proto $scheme; # will forward the protocole i.e. http, https
+        proxy_set_header X-Forwarded-Port $server_port; # Will forward the port 
+        proxy_set_header X-Forwarded-Host $host;                    # !Important will forward the host address
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host $host;                    # !Important will forward the host address
     }
 }
 ```
@@ -239,6 +276,8 @@ services:
 
 
             # OVERLEAF_PROXY_LEARN: "true"
+            OVERLEAF_SECURE_COOKIE: true
+            OVERLEAF_BEHIND_PROXY: true
         deploy:
           resources:
             limits:
